@@ -1,0 +1,142 @@
+name: new-repos
+
+# Opens a pull request that adds any repository not yet listed in repos.yaml.
+# See scripts/new_repos.py. While that pull request is open, runs leave it
+# alone so edits pushed to it aren't overwritten; repositories created in the
+# meantime are picked up after it merges.
+
+on:
+  schedule:
+    - cron: "17 9 * * *"
+  workflow_dispatch:
+
+permissions: {}
+
+concurrency:
+  group: ${{ github.workflow }}
+  cancel-in-progress: false
+
+env:
+  OWNER: horrell-consulting
+  BRANCH: bot/new-repos
+
+jobs:
+  propose:
+    # Skip until the GitHub App is set up (see README).
+    if: vars.NEW_REPOS_APP_CLIENT_ID != ''
+    runs-on: ubuntu-slim
+    permissions:
+      contents: read
+    steps:
+      # Read-only access to every repository the app is installed on, to list
+      # private repositories too.
+      - name: Read token
+        id: read-token
+        uses: actions/create-github-app-token@64ab729a6294000f5aa4a4bc0b73d1f32bc45510 # v3.3.0
+        with:
+          client-id: ${{ vars.NEW_REPOS_APP_CLIENT_ID }}
+          private-key: ${{ secrets.NEW_REPOS_APP_PRIVATE_KEY }}
+          owner: ${{ env.OWNER }} # zizmor: ignore[github-app] metadata: read only, and it must see every repository
+          permission-metadata: read
+
+      # Write access to this repository only, to push the branch and open the
+      # pull request. Pull requests opened with an app token trigger CI.
+      - name: Write token
+        id: write-token
+        uses: actions/create-github-app-token@64ab729a6294000f5aa4a4bc0b73d1f32bc45510 # v3.3.0
+        with:
+          client-id: ${{ vars.NEW_REPOS_APP_CLIENT_ID }}
+          private-key: ${{ secrets.NEW_REPOS_APP_PRIVATE_KEY }}
+          owner: ${{ env.OWNER }}
+          repositories: github-settings
+          permission-contents: write
+          permission-pull-requests: write
+
+      - name: Check for an open pull request
+        id: open-pr
+        env:
+          GH_TOKEN: ${{ steps.write-token.outputs.token }}
+          REPO: ${{ github.repository }}
+        run: |
+          pr=$(gh pr list --repo "$REPO" --head "$BRANCH" --state open --json url --jq '.[0].url // empty')
+          if [ -n "$pr" ]; then
+            echo "A pull request is already open, leaving it alone: $pr"
+            echo "open=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        if: steps.open-pr.outputs.open != 'true'
+        with:
+          persist-credentials: false
+
+      - name: Find new repositories
+        id: find
+        if: steps.open-pr.outputs.open != 'true'
+        env:
+          GH_TOKEN: ${{ steps.read-token.outputs.token }}
+        run: |
+          python3 scripts/new_repos.py --owner "$OWNER" > "$RUNNER_TEMP/added.txt"
+          if [ -s "$RUNNER_TEMP/added.txt" ]; then
+            echo "found=true" >> "$GITHUB_OUTPUT"
+            cat "$RUNNER_TEMP/added.txt"
+          else
+            echo "No new repositories."
+          fi
+
+      # Commit through the API so the commit is signed by the app.
+      - name: Open the pull request
+        if: steps.find.outputs.found == 'true'
+        env:
+          GH_TOKEN: ${{ steps.write-token.outputs.token }}
+          REPO: ${{ github.repository }}
+          BASE: main
+        run: |
+          set -euo pipefail
+          names=$(paste -sd ' ' "$RUNNER_TEMP/added.txt")
+          list=$(while read -r name; do printf -- '- %s\n' "\`$name\`"; done < "$RUNNER_TEMP/added.txt")
+          base_sha=$(git rev-parse HEAD)
+
+          # Point the bot branch at the current default branch.
+          if gh api "repos/$REPO/git/ref/heads/$BRANCH" > /dev/null 2>&1; then
+            gh api -X PATCH "repos/$REPO/git/refs/heads/$BRANCH" \
+              -f sha="$base_sha" -F force=true > /dev/null
+          else
+            gh api "repos/$REPO/git/refs" \
+              -f ref="refs/heads/$BRANCH" -f sha="$base_sha" > /dev/null
+          fi
+
+          file_sha=$(gh api "repos/$REPO/contents/repos.yaml?ref=$BRANCH" --jq .sha)
+          gh api -X PUT "repos/$REPO/contents/repos.yaml" \
+            -f message="feat: manage $names" \
+            -f content="$(base64 -w0 repos.yaml)" \
+            -f sha="$file_sha" \
+            -f branch="$BRANCH" > /dev/null
+
+          body=$(cat <<EOF
+          Adds repositories that aren't managed yet:
+
+          $list
+
+          Each entry copies the repository's current settings, so applying should
+          only change the baseline. Before merging:
+
+          - [ ] Read the HCP plan (\`Terraform Cloud/horrell/horrell-consulting-github-settings\`)
+                and check it only imports these repositories and changes
+                baseline settings. Merging applies it.
+          - [ ] Add \`required_status_checks\` where the repository has CI.
+          - [ ] If a repository shouldn't be managed, archive it and drop its
+                entry; otherwise the next run proposes it again.
+          EOF
+          )
+
+          gh pr create --repo "$REPO" --base "$BASE" --head "$BRANCH" \
+            --title "feat: manage new repositories" --body "$body"
+
+  alert:
+    needs: [propose]
+    if: ${{ !cancelled() }}
+    permissions:
+      issues: write # open, comment on and close the alert issue
+    uses: chorrell/workflows/.github/workflows/scheduled-failure-issue.yml@v1
+    with:
+      failed: ${{ contains(needs.*.result, 'failure') }}

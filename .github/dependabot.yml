@@ -28,3 +28,21 @@ updates:
     multi-ecosystem-group: "tooling"
     cooldown:
       default-days: 7
+
+  - package-ecosystem: "terraform"
+    directories:
+      - "/"
+      - "/modules/*"
+    schedule:
+      interval: "monthly"
+    groups:
+      monthly-batch:
+        patterns:
+          - "*"
+    pull-request-branch-name:
+      separator: "/"
+    commit-message:
+      prefix: "chore"
+      include: "scope"
+    cooldown:
+      default-days: 7

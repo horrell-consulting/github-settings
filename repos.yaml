@@ -1,0 +1,30 @@
+# Repositories managed by this project, read by main.tf. Each key is the
+# repository name under horrell-consulting. Every option has a default in
+# modules/repository/variables.tf; set only what differs from the baseline.
+#
+# Archived repositories and forks are never managed. New repositories are
+# proposed automatically by the new-repos workflow (scripts/new_repos.py); to
+# keep one out, archive it.
+
+".github":
+  visibility: public
+  description: Organization profile and default community health files
+  required_status_checks:
+    - markdownlint / Markdown Lint
+    - pre-commit / pre-commit
+
+github-settings:
+  visibility: public
+  description: Terraform for the settings and rulesets of the horrell-consulting repositories
+  topics:
+    - terraform
+    - hcp-terraform
+    - github
+    - sentinel
+    - infrastructure-as-code
+  required_status_checks:
+    - validate
+    - markdownlint / Markdown Lint
+    - Terraform Cloud/horrell/horrell-consulting-github-settings
+    - sentinel/horrell/horrell-consulting-github-settings
+    - pre-commit / pre-commit

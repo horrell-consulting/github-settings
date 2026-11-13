@@ -17,3 +17,24 @@ Thumbs.db
 
 # Claude Code local settings
 .claude/settings.local.json
+
+# Terraform / OpenTofu
+.terraform/
+*.tfstate
+*.tfstate.*
+*.tfplan
+crash.log
+crash.*.log
+override.tf
+override.tf.json
+*_override.tf
+*_override.tf.json
+.terraformrc
+terraform.rc
+
+# Lock files that terraform_validate creates in modules; only the root lock file is committed
+modules/*/.terraform.lock.hcl
+
+# Python
+__pycache__/
+.ruff_cache/
