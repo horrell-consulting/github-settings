@@ -1,0 +1,6 @@
+# Ruff settings for scripts/. The GitHub-hosted runners have a newer Python,
+# but the script also runs locally on macOS's Python 3.9.
+target-version = "py39"
+
+[lint]
+extend-select = ["B", "I", "UP", "SIM"]

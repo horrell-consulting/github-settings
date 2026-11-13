@@ -1,0 +1,47 @@
+---
+name: terraform
+
+on:
+  pull_request:
+    branches:
+      - main
+  merge_group:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  # fmt, init, validate and tflint from the shared workflow
+  terraform:
+    uses: chorrell/workflows/.github/workflows/terraform-validate.yml@v1
+    with:
+      terraform-version: latest
+      # app_auth {} reads these as required arguments, even though validate
+      # never authenticates. The real values are on the HCP workspace.
+      validate-env: >-
+        {"GITHUB_APP_ID": "0", "GITHUB_APP_INSTALLATION_ID": "0",
+        "GITHUB_APP_PEM_FILE": "placeholder"}
+
+  # The required check is `validate`, and a called workflow's check is
+  # prefixed with the caller's job id, so this gate reports under that name.
+  # Add every new job to needs.
+  validate:
+    if: always()
+    needs: [terraform]
+    runs-on: ubuntu-slim
+    steps:
+      - name: Require every job to succeed
+        env:
+          RESULTS: ${{ join(needs.*.result, ' ') }}
+        run: |
+          echo "Job results: ${RESULTS}"
+          for result in ${RESULTS}; do
+            if [ "${result}" != "success" ]; then
+              echo "::error::A required job did not succeed (${result})"
+              exit 1
+            fi
+          done
