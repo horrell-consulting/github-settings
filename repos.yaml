@@ -8,7 +8,7 @@
 
 ".github":
   visibility: public
-  description: Organization profile and default community health files
+  description: Organization profile
   required_status_checks:
     - markdownlint / Markdown Lint
     - pre-commit / pre-commit

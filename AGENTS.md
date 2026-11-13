@@ -38,7 +38,7 @@ baseline every repository gets and for day-to-day usage.
   anything about private repositories. Those are managed separately, by `chorrell/github-settings`.
 - **Managed repositories must be public.** The organization is on GitHub Free, which doesn't allow rulesets on private
   repositories, so an apply fails on a private entry.
-- **Don't turn on `merge_queue` for this repository.** HCP Terraform doesn't plan merge queue branches, so its required
+- **Don't turn on `merge_queue` for this repository.** HCP Terraform doesn't report on merge queue branches, so its required
   check would never report. Use it only where every required check runs in GitHub Actions with a `merge_group` trigger.
 - **To keep a repository out, archive it.** The bot skips archived repositories and forks, and proposes anything else
   that isn't in `repos.yaml`, so dropping an entry from its PR only lasts until the next run.

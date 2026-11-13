@@ -70,10 +70,12 @@ daily new-repos bot ──► pull request adding unmanaged repositories ──�
   Terraform doesn't run speculative plans for pull requests from forks, so an
   outside contribution can't run provider code with the app's key.
 - **No merge queue here.** The module supports one (`merge_queue: true`), but
-  HCP Terraform plans pull requests, not merge queue branches, so its required
-  check would never report and every queued pull request would wait forever.
-  Merge queues suit repositories whose required checks all come from GitHub
-  Actions with a `merge_group` trigger.
+  a merge queue needs every required check to report on its temporary merge
+  branch. HCP Terraform reports on pull requests, and its documentation
+  describes no support for merge queue branches, so a queued pull request here
+  would wait for a check that never comes. Merge queues suit repositories
+  whose required checks all come from GitHub Actions with a `merge_group`
+  trigger.
 - **Separate from my personal repositories.** My personal account has its own
   copy of this setup for private repositories. Keeping them apart gives each
   owner its own GitHub App, workspace and state, so a mistake in one can't
