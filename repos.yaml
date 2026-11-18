@@ -13,6 +13,24 @@
     - markdownlint / Markdown Lint
     - pre-commit / pre-commit
 
+doks-runners:
+  visibility: public
+  description: "Self-hosted GitHub Actions runners on DigitalOcean Kubernetes: a low-cost, always-available build fleet for Docker images"
+  topics:
+    - actions-runner-controller
+    - digitalocean
+    - github-actions
+    - hcp-terraform
+    - infrastructure-as-code
+    - kubernetes
+    - self-hosted-runners
+    - terraform
+  required_status_checks:
+    - markdownlint / Markdown Lint
+    - pre-commit / pre-commit
+    - Terraform Cloud/horrell/doks-runners-arc
+    - Terraform Cloud/horrell/doks-runners-cluster
+
 github-settings:
   visibility: public
   description: Terraform for the settings and rulesets of the horrell-consulting repositories
