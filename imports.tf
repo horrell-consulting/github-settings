@@ -5,10 +5,3 @@ import {
   to       = module.repository[each.key].github_repository.this
   id       = each.key
 }
-
-# doks-runners moved here from chorrell with its default-branch ruleset, which
-# chorrell/github-settings created. Remove this block once it's applied.
-import {
-  to = module.repository["doks-runners"].github_repository_ruleset.default_branch
-  id = "doks-runners:27052035"
-}
